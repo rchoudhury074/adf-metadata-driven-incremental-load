@@ -1,0 +1,21 @@
+{
+	"name": "LS_OnPrem_SQLServer_RetailDW",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"server": "Rashmi\\SQLEXPRESS",
+			"database": "RetailDW_Dev",
+			"encrypt": "optional",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "adfuser",
+			"encryptedCredential": "eyJDcmVkZW50aWFsSWQiOiI5YTMxOTBkNy0zNmE5LTQ3MmYtOTJlZS05OTg0YTAyYzM2NDEiLCJWZXJzaW9uIjoiMi4wIiwiQ2xhc3NUeXBlIjoiTWljcm9zb2Z0LkRhdGFQcm94eS5Db3JlLkludGVyU2VydmljZURhdGFDb250cmFjdC5DcmVkZW50aWFsU1UwNkNZMTQifQ=="
+		},
+		"connectVia": {
+			"referenceName": "SHIR-OnPremSQLServer",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

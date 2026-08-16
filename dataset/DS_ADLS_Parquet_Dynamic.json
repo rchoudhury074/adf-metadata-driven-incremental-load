@@ -1,0 +1,45 @@
+{
+	"name": "DS_ADLS_Parquet_Dynamic",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_ADLSGen2_RetailDW",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"ContainerName": {
+				"type": "string",
+				"defaultValue": "retail-data"
+			},
+			"DirectoryName": {
+				"type": "string",
+				"defaultValue": "bronze/FactSales"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "FactSales.parquet"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().FileName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().DirectoryName",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().ContainerName",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

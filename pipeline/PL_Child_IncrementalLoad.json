@@ -1,0 +1,196 @@
+{
+	"name": "PL_Child_IncrementalLoad",
+	"properties": {
+		"activities": [
+			{
+				"name": "LKP_MAX_VALUE",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT MAX(@{pipeline().parameters.WatermarkColumn}) AS MaxValue\nFROM @{pipeline().parameters.TableSchema}.@{pipeline().parameters.TableName}",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_SQLServer_Dynamic",
+						"type": "DatasetReference",
+						"parameters": {
+							"SchemaName": {
+								"value": "@pipeline().parameters.TableSchema",
+								"type": "Expression"
+							},
+							"TableName": {
+								"value": "@pipeline().parameters.TableName",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "IF_NEW_RECORD_EXISTS",
+				"description": "Run Copy Activity if LastLoadValue is NULL, then initial full load.\nMaxValue > LastLoadValue then new record exist.",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LKP_MAX_VALUE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(\n    equals(pipeline().parameters.LastLoadValue, null),\n    greater(\n        int(activity('LKP_MAX_VALUE').output.firstRow.MaxValue),\n        int(pipeline().parameters.LastLoadValue)\n    )\n)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "COPYSQL_FULL_INCREMENTAL",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat(\n    'SELECT * FROM ',\n    pipeline().parameters.TableSchema,\n    '.',\n    pipeline().parameters.TableName,\n    if(\n        equals(pipeline().parameters.LastLoadValue, null),\n        '',\n        concat(\n            ' WHERE ',\n            pipeline().parameters.WatermarkColumn,\n            ' > ''',\n            pipeline().parameters.LastLoadValue,\n            ''''\n        )\n    )\n)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_SQLServer_Dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"SchemaName": {
+											"value": "@pipeline().parameters.TableSchema",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@pipeline().parameters.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_ADLS_Parquet_Dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"ContainerName": "retail-data",
+										"DirectoryName": {
+											"value": "@concat('bronze/', pipeline().parameters.TableName)",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@concat(\n    pipeline().parameters.TableName,\n    '_',\n    formatDateTime(\n        convertFromUtc(utcNow(),'India Standard Time'),\n        'yyyyMMdd_HHmmss'\n    ),\n    '.parquet'\n)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "EXEC_UPDATE_WATERMARK",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "COPYSQL_FULL_INCREMENTAL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PL_Child_UpdateWatermark",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"TableSchema": {
+										"value": "@pipeline().parameters.TableSchema",
+										"type": "Expression"
+									},
+									"TableName": {
+										"value": "@pipeline().parameters.TableName",
+										"type": "Expression"
+									},
+									"WatermarkColumn": {
+										"value": "@pipeline().parameters.WatermarkColumn",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"TableSchema": {
+				"type": "string"
+			},
+			"TableName": {
+				"type": "string"
+			},
+			"WatermarkColumn": {
+				"type": "string"
+			},
+			"LastLoadValue": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-16T05:23:56Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

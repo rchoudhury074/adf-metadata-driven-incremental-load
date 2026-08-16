@@ -1,0 +1,13 @@
+{
+	"name": "SHIR-OnPremSQLServer",
+	"properties": {
+		"type": "SelfHosted",
+		"description": "Shared Self-Hosted IR for on-premise SQL Server",
+		"typeProperties": {
+			"linkedInfo": {
+				"resourceId": "/subscriptions/e5c74d9f-a0c7-4f2e-9e42-dfb12a2b28c4/resourcegroups/rg_dev_dubyproject/providers/Microsoft.DataFactory/factories/adfdevdatproject/integrationruntimes/integrationRuntime1",
+				"authorizationType": "Rbac"
+			}
+		}
+	}
+}
